@@ -88,6 +88,8 @@ module SSE
     #
     def initialize(uri,
           headers: {},
+          json_body: nil,
+          method: "GET",
           connect_timeout: DEFAULT_CONNECT_TIMEOUT,
           read_timeout: DEFAULT_READ_TIMEOUT,
           reconnect_time: DEFAULT_RECONNECT_TIME,
@@ -100,6 +102,8 @@ module SSE
       @stopped = Concurrent::AtomicBoolean.new(false)
 
       @headers = headers.clone
+      @json_body = json_body.clone
+      @method = method
       @connect_timeout = connect_timeout
       @read_timeout = read_timeout
       @logger = logger || default_logger
@@ -264,8 +268,9 @@ module SSE
         cxn = nil
         begin
           @logger.info { "Connecting to event stream at #{@uri}" }
-          cxn = @http_client.request("GET", @uri, {
-            headers: build_headers
+          cxn = @http_client.request(@method, @uri, {
+            headers: build_headers,
+            json: @json_body
           })
           if cxn.status.code == 200
             content_type = cxn.content_type.mime_type

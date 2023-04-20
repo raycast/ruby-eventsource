@@ -57,7 +57,7 @@ EOT
         requests << req
         send_stream_content(res, "", keep_open: true)
       end
-      
+
       headers = { "Authorization" => "secret" }
 
       with_client(subject.new(server.base_uri, headers: headers)) do |client|
@@ -82,7 +82,7 @@ EOT
         requests << req
         send_stream_content(res, "", keep_open: true)
       end
-      
+
       headers = { "Authorization" => "secret" }
 
       with_client(subject.new(server.base_uri, headers: headers, last_event_id: id)) do |client|
@@ -438,12 +438,40 @@ EOT
       server.setup_response("/") do |req,res|
         send_stream_content(res, "", keep_open: true)
       end
-      
+
       with_client(subject.new(server.base_uri)) do |client|
         expect(client.closed?).to be(false)
 
         client.close
         expect(client.closed?).to be(true)
+      end
+    end
+  end
+
+  it "supports POST requests" do
+    with_server do |server|
+      requests = Queue.new
+      server.setup_response("/") do |req,res|
+        requests << req
+        send_stream_content(res, "", keep_open: true)
+      end
+
+      headers = { "Authorization" => "secret" }
+
+      with_client(subject.new(server.base_uri, method: "POST", json_body: { hi: "hello" }, headers: headers)) do |client|
+        received_req = requests.pop
+        expect(received_req.body).to(eq({ hi: "hello"}.to_json))
+        expect(received_req.request_method).to eq("POST")
+        expect(received_req.header).to eq({
+          "accept" => ["text/event-stream"],
+          "cache-control" => ["no-cache"],
+          "content-length" => ["14"],
+          "content-type" => ["application/json; charset=UTF-8"],
+          "host" => ["127.0.0.1:" + server.port.to_s],
+          "authorization" => ["secret"],
+          "user-agent" => ["ruby-eventsource"],
+          "connection" => ["close"]
+        })
       end
     end
   end
